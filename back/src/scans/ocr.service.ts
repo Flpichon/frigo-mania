@@ -65,7 +65,9 @@ const DATE_PATTERNS: {
     parse: (m) => {
       const day = Number(m[1]);
       const month = Number(m[2]);
-      if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+      if (day < 1 || day > 31 || month < 1 || month > 12) {
+        return null;
+      }
       const now = new Date();
       let year = now.getFullYear();
       // Comparer avec la date UTC d'aujourd'hui pour éviter les décalages de timezone
@@ -170,29 +172,19 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Preprocessing agressif : niveaux de gris + normalize + contraste fort + sharpen.
-   * Pour les photos floues ou les textes imprimés jet d'encre sur fond brillant.
+   * Preprocessing pour OCR : niveaux de gris + normalize + contraste fort + sharpen
+   * + upscale ×2 plafonné à 1600px de large.
+   *
+   * Le plafond évite d'upscaler des images déjà haute résolution (ex. photo 4K → 8K).
+   * Base plafonnée à 800px × 2 = 1600px max, ce qui donne ~50px de hauteur par
+   * caractère sur une date en taille normale — suffisant pour Tesseract.
    */
-  private async preprocessAggressive(buffer: Buffer): Promise<Buffer> {
-    return sharp(buffer)
-      .grayscale()
-      .normalize()               // étire l'histogramme sur [0,255]
-      .linear(2.0, -80)          // contraste fort
-      .sharpen({ sigma: 1.5 })   // renforce les bords des caractères
-      .jpeg({ quality: 90 })
-      .toBuffer();
-  }
-
-  /**
-   * Preprocessing agressif avec upscale ×2.
-   * Donne plus de pixels par caractère à Tesseract — améliore la lecture
-   * des séparateurs (/.-) sur fond brillant ou texte jet d'encre fin.
-   */
-  private async preprocessUpscale(buffer: Buffer): Promise<Buffer> {
+  private async preprocessForOcr(buffer: Buffer): Promise<Buffer> {
     const meta = await sharp(buffer).metadata();
-    const w = meta.width ?? 500;
+    const w = meta.width ?? 800;
+    const targetW = Math.min(w, 800) * 2; // plafonné à 1600px
     return sharp(buffer)
-      .resize(w * 2, undefined, { kernel: sharp.kernel.lanczos3 })
+      .resize(targetW, undefined, { kernel: sharp.kernel.lanczos3 })
       .grayscale()
       .normalize()
       .linear(2.0, -80)
@@ -204,12 +196,13 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
   /**
    * Extrait la date de péremption depuis une image base64.
    *
-   * Cascade de 5 passes, du plus probable au fallback :
-   *   1. Crop bas 50% + agressif + upscale ×2  + PSM 6  ← cas principal
-   *   2. Crop bas 50% + agressif + upscale ×2  + PSM 3
-   *   3. Crop bas 50% + agressif               + PSM 6
-   *   4. Image complète + agressif + upscale   + PSM 6  ← fallback (date en haut de l'emballage)
-   *   5. Image complète + originale            + PSM 3  ← cas images simples/nettes
+   * Cascade de 3 passes sur l'image complète :
+   *   1. Original + PSM 3          — images simples/nettes, pas de preprocessing
+   *   2. preprocessForOcr + PSM 6  — cas principal : fond brillant, texte jet d'encre
+   *   3. preprocessForOcr + PSM 3  — si la mise en page est complexe
+   *
+   * Pas de crop : l'utilisateur peut zoomer sur n'importe quelle zone de l'emballage,
+   * le postulat "date en bas" n'est pas fiable.
    *
    * Retourne null si aucune date valide n'est trouvée.
    */
@@ -221,40 +214,31 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const buffer = Buffer.from(imageBase64, 'base64');
-      const bottomHalf = await this.cropBottom(buffer, 0.5);
 
-      // 1. Crop bas + agressif + upscale × 2 + PSM 6
-      const bottomUp = await this.preprocessUpscale(bottomHalf);
-      const text1 = await this.recognizeWithPsm(bottomUp, PSM.SINGLE_BLOCK);
-      this.logger.log(`[1/5] bottom+up+PSM6  : "${text1.replace(/\n/g, '↵')}"`);
-      const date1 = this.parseDate(text1, '[1/5] bottom+up+PSM6');
-      if (date1) return date1;
+      // 1. Original + PSM 3
+      const text1 = await this.recognizeWithPsm(buffer, PSM.AUTO);
+      this.logger.log(`[1/3] orig+PSM3      : "${text1.replace(/\n/g, '↵')}"`);
+      const date1 = this.parseDate(text1, '[1/3] orig+PSM3');
+      if (date1) {
+        return date1;
+      }
 
-      // 2. Crop bas + agressif + upscale × 2 + PSM 3
-      const text2 = await this.recognizeWithPsm(bottomUp, PSM.AUTO);
-      this.logger.log(`[2/5] bottom+up+PSM3  : "${text2.replace(/\n/g, '↵')}"`);
-      const date2 = this.parseDate(text2, '[2/5] bottom+up+PSM3');
-      if (date2) return date2;
+      // 2. preprocessForOcr + PSM 6
+      const processed = await this.preprocessForOcr(buffer);
+      const text2 = await this.recognizeWithPsm(processed, PSM.SINGLE_BLOCK);
+      this.logger.log(`[2/3] preproc+PSM6   : "${text2.replace(/\n/g, '↵')}"`);
+      const date2 = this.parseDate(text2, '[2/3] preproc+PSM6');
+      if (date2) {
+        return date2;
+      }
 
-      // 3. Crop bas + agressif (sans upscale) + PSM 6
-      const bottomAggr = await this.preprocessAggressive(bottomHalf);
-      const text3 = await this.recognizeWithPsm(bottomAggr, PSM.SINGLE_BLOCK);
-      this.logger.log(`[3/5] bottom+aggr+PSM6: "${text3.replace(/\n/g, '↵')}"`);
-      const date3 = this.parseDate(text3, '[3/5] bottom+aggr+PSM6');
-      if (date3) return date3;
-
-      // 4. Image complète + agressif + upscale (date parfois en haut de l'emballage)
-      const fullUp = await this.preprocessUpscale(buffer);
-      const text4 = await this.recognizeWithPsm(fullUp, PSM.SINGLE_BLOCK);
-      this.logger.log(`[4/5] full+up+PSM6    : "${text4.replace(/\n/g, '↵')}"`);
-      const date4 = this.parseDate(text4, '[4/5] full+up+PSM6');
-      if (date4) return date4;
-
-      // 5. Image complète originale + PSM 3 (images simples/nettes)
-      const text5 = await this.recognizeWithPsm(buffer, PSM.AUTO);
-      this.logger.log(`[5/5] orig+PSM3       : "${text5.replace(/\n/g, '↵')}"`);
-      const date5 = this.parseDate(text5, '[5/5] orig+PSM3');
-      if (date5) return date5;
+      // 3. preprocessForOcr + PSM 3
+      const text3 = await this.recognizeWithPsm(processed, PSM.AUTO);
+      this.logger.log(`[3/3] preproc+PSM3   : "${text3.replace(/\n/g, '↵')}"`);
+      const date3 = this.parseDate(text3, '[3/3] preproc+PSM3');
+      if (date3) {
+        return date3;
+      }
 
       this.logger.warn('Aucune date trouvée après toutes les tentatives OCR');
       return null;
@@ -282,7 +266,10 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
         })
         .join(' ');
     });
-    const normalized = tokenizedLines.join('\n').replace(/[ \t]+/g, ' ').trim();
+    const normalized = tokenizedLines
+      .join('\n')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
 
     this.logger.log(`${label} normalisé : "${normalized.replace(/\n/g, '↵')}"`);
 
@@ -306,15 +293,17 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
 
     // Trier par priorité décroissante, puis par date la plus proche dans le futur
     candidates.sort((a, b) => {
-      if (b.priority !== a.priority) return b.priority - a.priority;
+      if (b.priority !== a.priority) {
+        return b.priority - a.priority;
+      }
       return a.date.getTime() - b.date.getTime();
     });
 
     const best = candidates[0];
     this.logger.log(
       `${label} date trouvée : ${best.date.toISOString().slice(0, 10)} ` +
-      `(match: "${best.match}", priorité: ${best.priority}, ` +
-      `${candidates.length} candidat(s))`,
+        `(match: "${best.match}", priorité: ${best.priority}, ` +
+        `${candidates.length} candidat(s))`,
     );
     return best.date;
   }
