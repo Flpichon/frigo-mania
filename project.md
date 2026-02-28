@@ -1,0 +1,13 @@
+ Le but de se projet est de crééer un app web => mobile first ayant pour principe de :
+  - scanner un article de denrée alimentaire périssable (exemples: yahourt, fromage, plats préparés, etc) pour :
+  -- récupérer la date de péremption (via ocr)
+  -- récupérer les info nutritionnelles
+  -- sauvegarder ses infos
+  - crééer une liste des produits périssables stockées sur et pouvoir la filtrer / trier modifier:
+  -- pouvoir avoir les produits qui vont périmer dans un futur proche
+  -- trier/filtrer les produits par catégories
+  -- supprimer des produits périmés (et indiquer si on a pas pu les consommer)
+  -- modifier les dates de péremptions si ocr a mal fonctionné
+  -- créer des rapports sur les produits les plus achetés / les plus jeté sans être consommés
+  - pouvoir partager la liste et permettre la modification via de l'auth (déjà existante sur mon ovh => k8s => keycloak)
+  - le front en nextjs, le back en nestjs => pwa 

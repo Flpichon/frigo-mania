@@ -1,0 +1,38 @@
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Env files (secrets) ───────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Next.js (front/) ──────────────────────────────────────────────────────────
+front/.next/
+front/out/
+front/build/
+front/.vercel
+front/*.tsbuildinfo
+front/next-env.d.ts
+front/coverage/
+
+# ── NestJS (back/) ────────────────────────────────────────────────────────────
+back/dist/
+back/coverage/
+back/*.tsbuildinfo
+
+# ── Tesseract trained data (téléchargées à l'init, ne pas versionner) ─────────
+back/*.traineddata
+
+# ── Keycloak (données locales, le realm JSON est versionné) ───────────────────
+keycloak/data/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.pem
