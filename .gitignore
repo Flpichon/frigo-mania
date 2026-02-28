@@ -32,7 +32,10 @@ back/*.tsbuildinfo
 back/*.traineddata
 
 # ── Keycloak (données locales, le realm JSON est versionné) ───────────────────
-keycloak/data/
+keycloak/
+
+# ── Notes projet (local uniquement) ──────────────────────────────────────────
+project.md
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 *.pem
