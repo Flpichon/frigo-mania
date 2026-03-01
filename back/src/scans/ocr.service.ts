@@ -158,20 +158,6 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Crop la moitié basse de l'image (50–100% de la hauteur).
-   * Les dates de péremption se trouvent quasi-systématiquement dans le bas de l'emballage.
-   */
-  private async cropBottom(buffer: Buffer, fraction = 0.5): Promise<Buffer> {
-    const meta = await sharp(buffer).metadata();
-    const h = meta.height ?? 100;
-    const w = meta.width ?? 100;
-    const top = Math.round(h * (1 - fraction));
-    return sharp(buffer)
-      .extract({ left: 0, top, width: w, height: h - top })
-      .toBuffer();
-  }
-
-  /**
    * Preprocessing pour OCR : niveaux de gris + normalize + contraste fort + sharpen
    * + upscale ×2 plafonné à 1600px de large.
    *
@@ -182,7 +168,7 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
   private async preprocessForOcr(buffer: Buffer): Promise<Buffer> {
     const meta = await sharp(buffer).metadata();
     const w = meta.width ?? 800;
-    const targetW = Math.min(w, 800) * 2; // plafonné à 1600px
+    const targetW = Math.min(w, 800) * 2;
     return sharp(buffer)
       .resize(targetW, undefined, { kernel: sharp.kernel.lanczos3 })
       .grayscale()
@@ -193,19 +179,6 @@ export class OcrService implements OnModuleInit, OnModuleDestroy {
       .toBuffer();
   }
 
-  /**
-   * Extrait la date de péremption depuis une image base64.
-   *
-   * Cascade de 3 passes sur l'image complète :
-   *   1. Original + PSM 3          — images simples/nettes, pas de preprocessing
-   *   2. preprocessForOcr + PSM 6  — cas principal : fond brillant, texte jet d'encre
-   *   3. preprocessForOcr + PSM 3  — si la mise en page est complexe
-   *
-   * Pas de crop : l'utilisateur peut zoomer sur n'importe quelle zone de l'emballage,
-   * le postulat "date en bas" n'est pas fiable.
-   *
-   * Retourne null si aucune date valide n'est trouvée.
-   */
   async extractExpirationDate(imageBase64: string): Promise<Date | null> {
     if (!this.worker) {
       this.logger.error('Worker Tesseract non initialisé');
