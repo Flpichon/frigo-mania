@@ -1,9 +1,13 @@
 /**
  * Lightweight API client that attaches the NextAuth session token
  * to every request targeting the NestJS backend.
+ *
+ * All calls use a relative /api path — Next.js rewrites proxy them to the
+ * backend service (see next.config.ts). This avoids the NEXT_PUBLIC_* build-time
+ * baking issue.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const API_BASE = "/api";
 
 export async function apiFetch<T>(
   path: string,
@@ -17,7 +21,7 @@ export async function apiFetch<T>(
     ...(fetchOptions.headers ?? {}),
   };
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...fetchOptions,
     headers,
   });
