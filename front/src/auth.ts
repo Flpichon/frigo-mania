@@ -60,6 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
       issuer:
         `${process.env.KEYCLOAK_AUTH_SERVER_URL}/realms/${process.env.KEYCLOAK_REALM}`,
+      checks: ["pkce", "state"],
     }),
   ],
   callbacks: {
