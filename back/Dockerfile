@@ -17,8 +17,10 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY eng.traineddata ./
-COPY fra.traineddata ./
+
+RUN apk add --no-cache wget && \
+    wget -q https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata && \
+    wget -q https://github.com/tesseract-ocr/tessdata/raw/main/fra.traineddata
 
 EXPOSE 3001
 
