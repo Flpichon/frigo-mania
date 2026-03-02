@@ -39,6 +39,11 @@ export function BarcodeScanner({ onDetected, active, token }: Props) {
         videoRef.current,
         (result, err) => {
           if (result) {
+            // Stopper le flux immédiatement pour éviter que ZXing continue
+            // d'appeler ce callback sur les frames suivantes, ce qui
+            // redispatcherait BARCODE_DETECTED et réinitialiserait l'état.
+            BrowserMultiFormatReader.releaseAllStreams();
+            readerRef.current = null;
             onDetected(result.getText());
           }
           if (err && !(err instanceof NotFoundException)) {
