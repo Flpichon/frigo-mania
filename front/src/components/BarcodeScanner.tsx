@@ -16,6 +16,9 @@ export function BarcodeScanner({ onDetected, active, token }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Empêche onDetected d'être appelé plusieurs fois si ZXing continue de
+  // scanner des frames après la première détection (comportement iOS Safari).
+  const hasDetected = useRef(false);
 
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [decoding, setDecoding] = useState(false);
@@ -32,18 +35,21 @@ export function BarcodeScanner({ onDetected, active, token }: Props) {
     if (!videoRef.current) {
       return;
     }
+    hasDetected.current = false;
     try {
       readerRef.current = new BrowserMultiFormatReader();
       await readerRef.current.decodeFromVideoDevice(
         undefined, // caméra par défaut (arrière sur mobile)
         videoRef.current,
         (result, err) => {
-          if (result) {
-            // Stopper le flux immédiatement pour éviter que ZXing continue
-            // d'appeler ce callback sur les frames suivantes, ce qui
-            // redispatcherait BARCODE_DETECTED et réinitialiserait l'état.
-            BrowserMultiFormatReader.releaseAllStreams();
-            readerRef.current = null;
+          if (result && !hasDetected.current) {
+            // Marquer immédiatement pour ignorer les frames suivantes.
+            // On ne coupe PAS le flux ici : releaseAllStreams() depuis le
+            // callback déclenche un visibilitychange sur iOS Safari, ce qui
+            // provoque un refresh Next.js et réinitialise l'état React.
+            // Le cleanup du useEffect s'occupe d'arrêter le flux au bon
+            // moment, après que React a committé le changement de step.
+            hasDetected.current = true;
             onDetected(result.getText());
           }
           if (err && !(err instanceof NotFoundException)) {
