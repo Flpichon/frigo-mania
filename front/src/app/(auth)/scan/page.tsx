@@ -100,7 +100,14 @@ export default function ScanPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Couper le flux caméra AVANT de changer de step : sur iOS Safari, un flux
+  // caméra actif pendant un appel fetch provoque une suspension de la webview
+  // qui se traduit par un GET parasite sur /api/scan → 404, ce qui réinitialise
+  // l'état et renvoie sur StepDateCapture.
+  const [scannerActive, setScannerActive] = useState(true);
+
   const handleBarcodeDetected = useCallback((code: string) => {
+    setScannerActive(false);
     dispatch({ type: "BARCODE_DETECTED", barcode: code });
   }, []);
 
@@ -165,12 +172,15 @@ export default function ScanPage() {
     }
   }, [state, token, router, household]);
 
-  const reset = useCallback(() => dispatch({ type: "RESET" }), []);
+  const reset = useCallback(() => {
+    setScannerActive(true);
+    dispatch({ type: "RESET" });
+  }, []);
 
   return (
     <div className="flex flex-col gap-6 p-4 pt-6">
       {state.step === "scan_barcode" && (
-        <StepBarcode onDetected={handleBarcodeDetected} token={token} />
+        <StepBarcode onDetected={handleBarcodeDetected} active={scannerActive} token={token} />
       )}
       {state.step === "capture_date" && (
         <StepDateCapture

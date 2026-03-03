@@ -9,16 +9,17 @@ const BarcodeScanner = dynamic(
 
 interface Props {
   onDetected: (barcode: string) => void;
+  active: boolean;
   token?: string;
 }
 
-export function StepBarcode({ onDetected, token }: Props) {
+export function StepBarcode({ onDetected, active, token }: Props) {
   return (
     <>
       <h1 className="text-xl font-bold text-gray-900 dark:text-zinc-100">
         Scanner le code-barres
       </h1>
-      <BarcodeScanner onDetected={onDetected} active token={token} />
+      <BarcodeScanner onDetected={onDetected} active={active} token={token} />
       <p className="text-center text-sm text-gray-400">
         Pointez la caméra vers le code-barres du produit
       </p>
