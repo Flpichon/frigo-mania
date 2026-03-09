@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Field } from "./Field";
+import { QuickDateInput } from "@/components/QuickDateInput";
 import type { ScanResult } from "@/types";
 
 type Step = "review" | "saving";
@@ -57,13 +58,24 @@ export function StepReview({
           onChange={onNameChange}
           placeholder="ex: Yaourt nature"
         />
-        <Field
-          label="Date de péremption *"
-          value={expirationDate}
-          onChange={onExpirationDateChange}
-          type="date"
-          highlight={dateNeedsReview}
-        />
+        {dateNeedsReview && !expirationDate ? (
+          <div>
+            <span className="mb-2 block text-xs font-medium text-amber-600 dark:text-amber-400">
+              Date de péremption * — non détectée, saisissez-la
+            </span>
+            <QuickDateInput
+              onCapture={onExpirationDateChange}
+            />
+          </div>
+        ) : (
+          <Field
+            label="Date de péremption *"
+            value={expirationDate}
+            onChange={onExpirationDateChange}
+            type="date"
+            highlight={dateNeedsReview}
+          />
+        )}
         <Field
           label="Catégorie"
           value={category}

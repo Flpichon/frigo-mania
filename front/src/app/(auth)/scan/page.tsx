@@ -111,16 +111,28 @@ export default function ScanPage() {
     dispatch({ type: "BARCODE_DETECTED", barcode: code });
   }, []);
 
-  const handleDateCaptured = useCallback(
-    async (base64: string) => {
+  /**
+   * Appelé quand la date a été résolue côté front (DateScanner OCR ou QuickDateInput).
+   * On récupère les infos produit via le backend (sans image), puis on force
+   * la date résolue front (plus fiable) dans le state de review.
+   */
+  const handleDateResolved = useCallback(
+    async (isoDate: string) => {
       if (state.step !== "capture_date") {
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchScanResult(state.barcode, token, base64);
-        dispatch({ type: "SCAN_RESULT_RECEIVED", result });
+        const result = await fetchScanResult(state.barcode, token);
+        // Injecter la date résolue côté front avec confiance "high"
+        const resultWithDate: ScanResult = {
+          ...result,
+          expirationDate: isoDate,
+          expirationDateConfidence: "high",
+          requiresManualReview: !result.name,
+        };
+        dispatch({ type: "SCAN_RESULT_RECEIVED", result: resultWithDate });
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -130,6 +142,10 @@ export default function ScanPage() {
     [state, token],
   );
 
+  /**
+   * Skip : l'utilisateur ne souhaite pas renseigner la date maintenant.
+   * On appelle le backend sans image → OCR skippé, confidence "none".
+   */
   const handleSkipDateCapture = useCallback(async () => {
     if (state.step !== "capture_date") {
       return;
@@ -187,7 +203,7 @@ export default function ScanPage() {
           barcode={state.barcode}
           loading={loading}
           error={error}
-          onCapture={handleDateCaptured}
+          onDateResolved={handleDateResolved}
           onSkip={handleSkipDateCapture}
         />
       )}
