@@ -76,3 +76,14 @@ export async function createHousehold(
     body: JSON.stringify({ name }),
   });
 }
+
+export async function joinHousehold(
+  inviteToken: string,
+  authToken: string,
+): Promise<void> {
+  await apiFetch("/households/join", {
+    method: "POST",
+    token: authToken,
+    body: JSON.stringify({ token: inviteToken }),
+  });
+}
