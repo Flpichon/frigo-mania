@@ -43,6 +43,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
     return {
       ...token,
+      sub: token.sub,
       accessToken: refreshed.access_token,
       accessTokenExpires: Date.now() + refreshed.expires_in * 1000,
       refreshToken: refreshed.refresh_token ?? token.refreshToken,
@@ -95,6 +96,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const keycloakProfile = profile as KeycloakProfile | undefined;
         return {
           ...token,
+          sub: token.sub,
           accessToken: account.access_token,
           accessTokenExpires: account.expires_at
             ? account.expires_at * 1000

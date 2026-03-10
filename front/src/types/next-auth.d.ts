@@ -13,6 +13,7 @@ declare module "@auth/core/types" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    sub?: string;
     accessToken?: string;
     accessTokenExpires?: number;
     refreshToken?: string;
