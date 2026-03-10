@@ -113,6 +113,7 @@ export class ProductsService {
           $set: {
             isRemoved: true,
             disposalReason: dto.disposalReason,
+            removedAt: new Date(),
           },
         },
         { new: true },

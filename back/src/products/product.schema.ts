@@ -12,6 +12,8 @@ export enum ProductStatus {
 export enum ProductDisposalReason {
   CONSUMED = 'consumed',
   THROWN = 'thrown',
+  EXPIRED_PRODUCT = 'expired_product',
+  ENTRY_ERROR = 'entry_error',
 }
 
 @Schema({ timestamps: true })
@@ -42,6 +44,9 @@ export class Product {
 
   @Prop({ type: String, enum: ProductDisposalReason, default: null })
   disposalReason?: ProductDisposalReason | null;
+
+  @Prop({ type: Date, default: null })
+  removedAt?: Date | null;
 
   @Prop({ default: false })
   isRemoved: boolean;

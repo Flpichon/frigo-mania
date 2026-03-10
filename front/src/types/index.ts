@@ -1,5 +1,5 @@
 export type ProductStatus = "ok" | "expiring_soon" | "expired";
-export type DisposalReason = "consumed" | "thrown";
+export type DisposalReason = "consumed" | "thrown" | "expired_product" | "entry_error";
 
 export interface Product {
   _id: string;
@@ -13,6 +13,7 @@ export interface Product {
   addedByUserId: string;
   disposalReason?: DisposalReason | null;
   isRemoved: boolean;
+  removedAt?: string | null;
   status: ProductStatus;
   createdAt: string;
   updatedAt: string;
