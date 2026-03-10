@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
@@ -23,7 +23,7 @@ function parseApiError(message: string): string {
   return "Une erreur est survenue. Veuillez réessayer.";
 }
 
-export default function JoinPage() {
+function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession();
@@ -118,3 +118,18 @@ export default function JoinPage() {
     </div>
   );
 }
+
+export default function JoinPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-zinc-950">
+          <Loader2 size={40} className="animate-spin text-green-600" />
+        </div>
+      }
+    >
+      <JoinContent />
+    </Suspense>
+  );
+}
+
