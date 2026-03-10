@@ -112,9 +112,9 @@ export default function ScanPage() {
   }, []);
 
   /**
-   * Appelé quand la date a été résolue côté front (DateScanner OCR ou QuickDateInput).
+   * Appelé quand la date a été saisie via QuickDateInput.
    * On récupère les infos produit via le backend (sans image), puis on force
-   * la date résolue front (plus fiable) dans le state de review.
+   * la date saisie (confidence "high") dans le state de review.
    */
   const handleDateResolved = useCallback(
     async (isoDate: string) => {
@@ -144,7 +144,7 @@ export default function ScanPage() {
 
   /**
    * Skip : l'utilisateur ne souhaite pas renseigner la date maintenant.
-   * On appelle le backend sans image → OCR skippé, confidence "none".
+   * On appelle le backend sans image, confidence "none".
    */
   const handleSkipDateCapture = useCallback(async () => {
     if (state.step !== "capture_date") {

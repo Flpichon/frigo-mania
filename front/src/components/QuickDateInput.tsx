@@ -1,23 +1,10 @@
 "use client";
 
-/**
- * QuickDateInput — saisie rapide d'une date de péremption.
- *
- * Deux modes complémentaires :
- * 1. Raccourcis temporels : boutons pré-calculés (+3j, +1 sem, +1 mois, etc.)
- *    → couvre les DLC les plus fréquentes (fromages, yaourts, plats préparés)
- *
- * 2. Pavé numérique formaté : l'utilisateur tape JJMMAA ou JJMMAAAA
- *    → auto-formaté en live comme "15/03/26" puis validé en ISO
- *    → inputMode="numeric" ouvre le clavier numérique sur mobile
- */
-
-import { useState } from "react";
+import { JSX, useState } from "react";
 import { CalendarDays, Check } from "lucide-react";
 
 interface Props {
   onCapture: (isoDate: string) => void;
-  /** Valeur initiale (ISO YYYY-MM-DD), pour pré-remplir le champ si déjà connue */
   initialDate?: string;
 }
 
@@ -119,7 +106,7 @@ function parseFormattedInput(formatted: string): string | null {
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function QuickDateInput({ onCapture, initialDate }: Props) {
+export function QuickDateInput({ onCapture, initialDate }: Props): JSX.Element {
   // Valeur brute du champ numérique (chiffres seulement, max 8)
   const [digits, setDigits] = useState<string>(() => {
     if (!initialDate) {
